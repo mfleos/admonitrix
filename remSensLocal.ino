@@ -21,6 +21,7 @@ int numReads = 0;
 
 
 void setup() {
+  int readsSize = sizeof(lstTemp)/sizeof(int);
   Serial.begin(9600);
   delay(200);
   Serial.println("Iniciando");
@@ -36,7 +37,7 @@ void loop() {
     numReads += 1;
     initMillisRead = millis();
   }
-  if (numReads == 6){                            // when reads counter reach the specified value generates the code
+  if (numReads == readsSize){                            // when reads counter reach the specified value generates the code
       printValues();
       
       String json;
@@ -106,7 +107,7 @@ void takeRead(int sensor){
 
 void printValues(){
   Serial.println("---Reads info---");
-  for ( int i = 0; i < 6 ; i++ ){
+  for ( int i = 0; i < readsSize ; i++ ){
     Serial.print("Read ");
     Serial.print(i);
     Serial.print(":");
@@ -115,7 +116,7 @@ void printValues(){
 }
 
 String encodeJson(String toEncode){
-  char jsonChar[300];
+  char jsonChar[300];                           //size is massive, to hold the full json char array
   toEncode.toCharArray(jsonChar,300);
   
   const char *hex = "0123456789abcdef";
