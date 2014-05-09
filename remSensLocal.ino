@@ -13,63 +13,62 @@
 
 //Identificador equipo
 String ID = "1";
-int lstTemp[] = {0,0,0,0,0,0,0,0,0,0,0,0};
-unsigned long lstTime[] = {0,0,0,0,0,0,0,0,0,0,0,0};
+int lstTemp[] = {0,0,0,0,0,0};
+unsigned long lstTime[] = {0,0,0,0,0,0};
 unsigned long initMillisRead = 0;
-unsigned long initMillisSend = 0;
+
 int numReads = 0;
 
 
 void setup() {
-  // start the Ethernet,UDP and Serial:
   Serial.begin(9600);
   delay(200);
   Serial.println("Iniciando");
   initMillisRead = millis();
-  initMillisSend = millis();
   Serial.print("initMillisRead: ");
   Serial.println(initMillisRead);
-  Serial.print("initMillisSend: ");
-  Serial.println(initMillisSend);
-
-
-
 }
 
 void loop() {
-  if (timer(READ_TIME, initMillisRead) == 1){
+
+  if (timer(READ_TIME, initMillisRead) == 1){     //each time the timer expires take a new read and increments the reads counter
     takeRead(SENS);
     numReads += 1;
     initMillisRead = millis();
   }
-  if (numReads == 12){
+  if (numReads == 6){                            // when reads counter reach the specified value generates the code
       printValues();
-      String json = makeString();
-      Serial.println(json);
+      
+      String json;
+      String jsonEncoded;
+          
       Serial.println("-----------------------");
-      unsigned int tamano = 300;
-      char jsonChar[tamano];
-      json.toCharArray(jsonChar, tamano);    
-      Serial.println(URLEncode(jsonChar));      
-      Serial.println(initMillisSend);
+      json = makeJson();
+      Serial.println("-----------------------");
+      jsonEncoded = encodeJson(json);
+      Serial.println("-----------------------");
+
+
+
       numReads = 0;
+      
   }
 }
 
-
-String makeString(){
-  //String strJsonTemps = "{'t1':1333456, 'T1':45}";
-  String strJsonTemps;
+String makeJson(){
+  String strJsonTemps = "";
   for(int iterTime = 0, iterTemp = 0; (iterTime < (sizeof(lstTime)/sizeof(unsigned long))) && (iterTemp < (sizeof(lstTemp)/sizeof(int))); iterTime++, iterTemp++){
     String tempEntry = "{\'t"+ String(iterTime) + "\':" + String(lstTime[iterTime]) + "," + "\'T"+ String(iterTemp) + "\':" + String(lstTemp[iterTemp]) + "}," ; 
     strJsonTemps.concat(tempEntry);
   }
   strJsonTemps = strJsonTemps.substring(0, strJsonTemps.length()-1 );
-
-  String strLecturas =  "{\'ID\':" + ID + "," + "\'time\':" + String(millis()) + ","+ "\'records\':[" + strJsonTemps + "]}" ;
-  return strLecturas;
+  String sendTime= String(millis());
+  String strLecturas =  "{\'ID\':" + ID + "," + "\'time\':" + sendTime + "," + "\'records\':[" + strJsonTemps + "]}" ;
+  Serial.print("strLecturas: " );
+  Serial.println(strLecturas);
+  
+  return strLecturas;       // needed to send it to URLEncode (compiler yells if not)
 }
-
 
 int timer (unsigned long retraso, unsigned long initTime){
   unsigned long milliSec = millis();
@@ -106,8 +105,8 @@ void takeRead(int sensor){
 }
 
 void printValues(){
-  Serial.println("---Send timer expired---");
-  for ( int i = 0; i < 12 ; i++ ){
+  Serial.println("---Reads info---");
+  for ( int i = 0; i < 6 ; i++ ){
     Serial.print("Read ");
     Serial.print(i);
     Serial.print(":");
@@ -115,27 +114,29 @@ void printValues(){
   }
 }
 
-char *convertToChar(String from, char* buffer, unsigned int sizeBuffer){
-  from.toCharArray(buffer, sizeBuffer);
-  return buffer;t
+String encodeJson(String toEncode){
+  char jsonChar[300];
+  toEncode.toCharArray(jsonChar,300);
+  
+  const char *hex = "0123456789abcdef";
+  String encodedMsg = "";
+  char *msg = jsonChar;
+
+  while (*msg!='\0'){
+    if( ('a' <= *msg && *msg <= 'z')
+        || ('A' <= *msg && *msg <= 'Z')
+        || ('0' <= *msg && *msg <= '9') ) {
+          encodedMsg += *msg;
+    } else {
+      encodedMsg += '%';
+      encodedMsg += hex[*msg >> 4];
+      encodedMsg += hex[*msg & 15];
+      }
+    msg++;
+  }
+  Serial.print("encodedMsg: ");
+  Serial.println(encodedMsg);
+
+  return encodedMsg;
 }
 
-String URLEncode(const char* msg)
-{
-    const char *hex = "0123456789abcdef";
-    String encodedMsg = "";
-
-    while (*msg!='\0'){
-        if( ('a' <= *msg && *msg <= 'z')
-                || ('A' <= *msg && *msg <= 'Z')
-                || ('0' <= *msg && *msg <= '9') ) {
-            encodedMsg += *msg;
-        } else {
-            encodedMsg += '%';
-            encodedMsg += hex[*msg >> 4];
-            encodedMsg += hex[*msg & 15];
-        }
-        msg++;
-    }
-    return encodedMsg;
-}
