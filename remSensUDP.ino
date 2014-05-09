@@ -13,9 +13,9 @@
 
 
 #define SENS 0
-#define READ_TIME 5
-#define SEND_TIME 60
-#define MULTIPLIER 100
+#define READ_TIME 30
+#define SEND_TIME 3600
+#define MULTIPLIER 1000
 
 /*-------------- Ethernet parameters and configurations------------------*/
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
@@ -35,8 +35,8 @@ char packetBuffer[UDP_TX_PACKET_MAX_SIZE]; //buffer to hold incoming packet,
 
 //Identificador equipo
 String ID = "1";
-int lstTemp[] = {0,0,0,0,0,0};
-unsigned long lstTime[] = {0,0,0,0,0,0};
+int lstTemp[] = {0,0,0,0,0,0,0,0,0,0,0,0};
+unsigned long lstTime[] = {0,0,0,0,0,0,0,0,0,0,0,0};
 unsigned long initMillisRead = 0;
 int lstTempSize = sizeof(lstTemp)/sizeof(int);
 int lstTimeSize = sizeof(lstTime)/sizeof(unsigned long);
@@ -63,30 +63,30 @@ void loop() {
   if (numReads == lstTempSize){                            // when reads counter reach the specified value generates the code
       // printValues();
       
-      char jsonChar[400];
-      //char jsonEncoded[400];
+      char jsonChar[400];jsonChar[0] = '\0';
+      char jsonEncoded[600];
           
       Serial.println("-----------------------");
       makeJson(jsonChar);
       Serial.println("-----------------------");
-      // encodeJson(jsonChar, jsonEncoded);
-      // Serial.println("-----------------------");
-      // udpSendme(jsonEncoded);
+      encodeJson(jsonChar, jsonEncoded);
+      Serial.println("-----------------------");
+      udpSendme(jsonEncoded);
       numReads = 0;
   }
 }
 
 int makeJson(char *jsonCharArray){
   // String strJsonTemps = "";
-  char *ptr = jsonCharArray;
-  char jsonTempsArray[40];
+  // char *ptr = jsonCharArray;
+  char jsonTempsArray[40];jsonTempsArray[0] = '\0';
   // strcpy(jsonTempsArray,"");
   for(int iterTime = 0, iterTemp = 0; (iterTime < lstTimeSize) && (iterTemp < lstTempSize); iterTime++, iterTemp++){
-    snprintf(jsonTempsArray,"{'t%i':%lu,'T%i':%i}",iterTime,lstTime[iterTime],iterTemp,lstTemp[iterTemp]);
+    snprintf(jsonTempsArray,40,"{'t%i':%lu,'T%i':%i}",iterTime,lstTime[iterTime],iterTemp,lstTemp[iterTemp]);
     // String tempEntry = "{\'t"+ String(iterTime) + "\':" + String(lstTime[iterTime]) + "," + "\'T"+ String(iterTemp) + "\':" + String(lstTemp[iterTemp]) + "}," ; 
     strncat(jsonCharArray,jsonTempsArray,400);
   }
-  jsonCharArray=ptr;
+  // jsonCharArray=ptr;
   Serial.print("jsonCharArray: ");
   Serial.println(jsonCharArray);
   // strJsonTemps = strJsonTemps.substring(0, strJsonTemps.length()-1 );
@@ -155,17 +155,17 @@ int encodeJson(char *charToEncode, char *encodedMsg){
         || ('A' <= *msg && *msg <= 'Z')
         || ('0' <= *msg && *msg <= '9') ) {
           *encodedMsg = *msg;
-          Serial.print(*encodedMsg);
+          // Serial.print(*encodedMsg);
           encodedMsg++;
     } else {
       *encodedMsg = '%';
-      Serial.print(*encodedMsg);
+      // Serial.print(*encodedMsg);
       encodedMsg++;
       *encodedMsg = hex[*msg >> 4];
-      Serial.print(*encodedMsg);
+      // Serial.print(*encodedMsg);
       encodedMsg++;
       *encodedMsg = hex[*msg & 15];
-      Serial.print(*encodedMsg);
+      // Serial.print(*encodedMsg);
       encodedMsg++;
       }
     msg++;
