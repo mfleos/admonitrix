@@ -8,21 +8,20 @@
 
 #include <SPI.h>         // needed for Arduino versions later than 0018
 #include <Ethernet.h>
-#include <EthernetUdp.h>         // UDP library from: bjoern@cs.stanford.edu 12/30/2008
-
-
 
 #define SENS 0
-#define READ_TIME 30
+#define READ_TIME 10
 #define SEND_TIME 3600
 #define MULTIPLIER 1000
 #define SERVER_TIME 60
 
 /*---------------------------- Ethernet parameters and configurations----------------------------*/
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ip(192,168,100,55);
+
+byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+IPAddress ip(192,168,1,18);
 IPAddress dnServer(8,8,4,4);
-IPAddress gw(192,168,100,1);
+IPAddress gw(192,168,1,1);
+
 
 IPAddress server (50,116,27,102);
 unsigned int rPort = 8081;
@@ -31,52 +30,52 @@ unsigned int rPort = 8081;
 EthernetClient client;
 unsigned int localPort = 8888;
 
-char packetBuffer[UDP_TX_PACKET_MAX_SIZE]; //buffer to hold incoming packet,
 
-//Identificador equipo
-String ID = "1";
-int lstTemp[] = {0,0,0,0,0,0,0,0,0,0,0,0};
-unsigned long lstTime[] = {0,0,0,0,0,0,0,0,0,0,0,0};
+/*------------------------------------- Global variables ----------------------------------------*/
+int id = 1;
+int lstTemp[] = {0,0,0,0,0,0};
+unsigned long lstTime[] = {0,0,0,0,0,0};
 unsigned long initMillisRead = 0;
 int lstTempSize = sizeof(lstTemp)/sizeof(int);
 int lstTimeSize = sizeof(lstTime)/sizeof(unsigned long);
 int numReads = 0;
 
 
-/*-------------------------------------------MAIN ----------------------------------------------------*/
+/*------------------------------------------MAIN--------------------------------------------------*/
 
 void setup() {
-  Serial.begin(9600);
+    Serial.begin(9600);
   delay(200);
   ethernetInit();
-  Serial.println("Iniciando");
+  
   initMillisRead = millis();
+
+  Serial.println("Iniciando");
   Serial.print("initMillisRead: ");
   Serial.println(initMillisRead);
 }
 
 void loop() {
 
-  if (timer(READ_TIME, initMillisRead) == 1){     //each time the timer expires take a new read and increments the reads counter
+  if (timer(READ_TIME, initMillisRead) == 1){              //each time the timer expires take a new read and increments the reads counter
     takeRead(SENS);
     numReads += 1;
     initMillisRead = millis();
   }
-  if (numReads == lstTempSize){                            // when reads counter reach the specified value generates the code
-      // printValues();
-      
-      char jsonChar[300];jsonChar[0] = '\0';
-      char jsonEncoded[600];
+  if (numReads == lstTempSize){                             // the threshold is the number of readings in the temperature array
+                                                             
+      char jsonChar[300]; jsonChar[0] = '\0';               // this string holds the original json 
+      char jsonEncoded[500];                                // this holds the massive json after encoded for url posting    
           
       Serial.println("-----------------------");
       makeJson(jsonChar);
       Serial.println("-----------------------");
       encodeJson(jsonChar, jsonEncoded);
       Serial.println("-----------------------");
-      // udpSendme(jsonEncoded);
-      tcpSendme(jsonEncoded);
+
+      tcpSendme(jsonEncoded);                                // this function adds the GET part to the encodedjson, connect to server, sent the data and wait some time for replys
       Serial.println("-----------------------");
-      numReads = 0;
+      numReads = 0;                                          // dont forget to reset the number of reads or we  will be entering encoding/sending continuosly.
   }
 }
 
@@ -99,7 +98,7 @@ void takeRead(int sensor){
   int lectura = analogRead(sensor);
   unsigned long millisSec = millis();
   lstTemp[i] = lectura;
-  lstTime[x] = millisSec;
+  lstTime[x] = millisSec/1000;                                  // divided by 1000 to become them in seconds
   Serial.print("Lectura-");
   Serial.print(i);
   Serial.print(": ");
@@ -129,12 +128,20 @@ void printValues(){
 }
 
 int makeJson(char *jsonCharArray){
-  char jsonTempsArray[40];jsonTempsArray[0] = '\0';
+  char jsonTempsArray[32];jsonTempsArray[0] = '\0';
+  char jsonHeader[42];jsonHeader[0]='\0';
+  char jsonFooter []= "]}";
+  
+  snprintf(jsonHeader,42,"{'ID':%i,'time':%lu,records:[", id, (millis()/1000));
+  strncat(jsonCharArray,jsonHeader,300);
+  Serial.print("jsonCharArrayHeader: ");
+  Serial.println(jsonCharArray);
 
   for(int iterTime = 0, iterTemp = 0; (iterTime < lstTimeSize) && (iterTemp < lstTempSize); iterTime++, iterTemp++){
-    snprintf(jsonTempsArray,40,"{'t%i':%lu,'T%i':%i}",iterTime,lstTime[iterTime],iterTemp,lstTemp[iterTemp]);
-    strncat(jsonCharArray,jsonTempsArray,400);
+    snprintf(jsonTempsArray,32,"{'t%i':%lu,'v%i':%i}",iterTime,lstTime[iterTime],iterTemp,lstTemp[iterTemp]);
+    strncat(jsonCharArray,jsonTempsArray,300);
   }
+  strncat(jsonCharArray,jsonFooter,300);
 
   Serial.print("jsonCharArray: ");
   Serial.println(jsonCharArray);
@@ -207,7 +214,7 @@ void ethernetInit(){
 }
 
 int tcpSendme(char *datosTx){
-  char beginURL[100] = "GET /Tlogger/Principal?action=test&json=";
+  char beginURL[] = "GET /Tlogger/Principal?action=test&json=";
 
   Serial.print("Request: ");
   Serial.println(beginURL);
@@ -233,7 +240,6 @@ int tcpSendme(char *datosTx){
       Serial.print(c);
     }
   }
-
     // if the server's disconnected, stop the client:
 
   if (!client.connected()) {

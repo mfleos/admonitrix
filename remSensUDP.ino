@@ -17,7 +17,7 @@
 #define SEND_TIME 3600
 #define MULTIPLIER 1000
 
-/*-------------- Ethernet parameters and configurations------------------*/
+/*---------------------------- Ethernet parameters and configurations----------------------------*/
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
 IPAddress ip(192, 168, 1, 3);
 IPAddress dnServer(8,8,4,4);
@@ -42,6 +42,8 @@ int lstTempSize = sizeof(lstTemp)/sizeof(int);
 int lstTimeSize = sizeof(lstTime)/sizeof(unsigned long);
 int numReads = 0;
 
+
+/*-------------------------------------------MAIN ----------------------------------------------------*/
 
 void setup() {
   Serial.begin(9600);
@@ -75,6 +77,9 @@ void loop() {
       numReads = 0;
   }
 }
+
+/*----------------------------------------FUNCTIONS---------------------------------------------------*/
+
 
 int makeJson(char *jsonCharArray){
   // String strJsonTemps = "";
@@ -181,6 +186,7 @@ int encodeJson(char *charToEncode, char *encodedMsg){
 }
 
 /*------------------- Inits Ethernet and UDP objects, returns the info serialized----------------*/
+
 void ethernetInit(){
   Ethernet.begin(mac,ip,dnServer,gw);
   Udp.begin(localPort);
@@ -213,3 +219,4 @@ void udpSendme(char *datosTx){
   Serial.println(datosTx);
   Serial.println("------------");
 }
+
