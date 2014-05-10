@@ -10,7 +10,7 @@
 #include <Ethernet.h>
 
 #define SENS 0
-#define READ_TIME 10
+#define READ_TIME 5
 #define SEND_TIME 3600
 #define MULTIPLIER 1000
 #define SERVER_TIME 60
@@ -18,7 +18,7 @@
 /*---------------------------- Ethernet parameters and configurations----------------------------*/
 
 byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
-IPAddress ip(192,168,1,18);
+IPAddress ip(192,168,1,155);
 IPAddress dnServer(8,8,4,4);
 IPAddress gw(192,168,1,1);
 
@@ -46,11 +46,11 @@ int numReads = 0;
 void setup() {
     Serial.begin(9600);
   delay(200);
+  Serial.println("Iniciando");
+  
   ethernetInit();
   
   initMillisRead = millis();
-
-  Serial.println("Iniciando");
   Serial.print("initMillisRead: ");
   Serial.println(initMillisRead);
 }
@@ -190,29 +190,30 @@ int encodeJson(char *charToEncode, char *encodedMsg){
 /*------------------- Inits Ethernet and UDP objects, returns the info serialized----------------*/
 
 void ethernetInit(){
-  Ethernet.begin(mac,ip,dnServer,gw);
-  //Udp.begin(localPort);
-  Serial.println("---------------");
-  Serial.println("Configuracion de Red: ");
-  Serial.print("mac: ");
-  for(int x=0; x<6;x++){
-    Serial.print("0x");
-    Serial.print(mac[x], HEX);
-    Serial.print(" , ");
+  if (Ethernet.begin(mac) == 0) {
+    Serial.println("Failed to configure Ethernet using DHCP");
+    Ethernet.begin(mac, ip, gw);
+    Serial.println("---------------");
+    Serial.println(ip);
+    Serial.print("gateway: ");
   }
-  Serial.println();
-  // Serial.println(mac);
-  Serial.print("ip: ");
-  Serial.println(ip);
-  Serial.print("gateway: ");
-  Serial.println(gw);
-  Serial.print("server: ");
-  Serial.println(server);
-  Serial.print("puerto server: ");
-  Serial.println(rPort);
-  Serial.println("---------------");
-}
-
+    Serial.print("mac: ");
+    for(int x=0; x<6;x++){
+      Serial.print("0x");
+      Serial.print(mac[x], HEX);
+      Serial.print(" , ");
+      Serial.println();
+    }
+    Serial.print("ip: ");
+    Serial.println(Ethernet.localIP());
+    Serial.println(gw);
+    Serial.print("server: ");
+    Serial.println(server);
+    Serial.print("puerto server: ");
+    Serial.println(rPort);
+    Serial.println("---------------");
+    }
+    
 int tcpSendme(char *datosTx){
   char beginURL[] = "GET /Tlogger/Principal?action=test&json=";
 
@@ -220,20 +221,32 @@ int tcpSendme(char *datosTx){
   Serial.println(beginURL);
   Serial.println(datosTx);
 
-  if (client.connect(server, rPort)) {
-    Serial.println("connected");
-    client.print(beginURL);
-    client.print(datosTx);
-    client.println();
-  } else {
-    Serial.println("connection failed");
+
+  int connOK = 0;
+  int tries = 0;
+  do{
+    if (client.connect(server, rPort)) {
+      Serial.println("connected");
+      client.print(beginURL);
+      client.print(datosTx);
+      client.println();
+      connOK = 1;
+      Serial.println("------------Sent--------------");
+    } else {
+      Serial.print("connection failed");
+      tries++;
+      Serial.print(" - Tries: ");
+      Serial.println(tries);
+    }  
+  } while(tries > 5 && connOK == 1 && (tries != 5 || connOK != 1));
+  
+  if (connOK == 0){
     return 1;
   }
 
   unsigned long initTimerReply = millis();
 
-  Serial.println("------------Sent--------------");
-
+  Serial.println("Waiting for replys");
   while(timer(20, initTimerReply) == 0 ) {
   if(client.available() != 0){
       char c = client.read();
