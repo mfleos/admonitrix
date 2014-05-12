@@ -23,7 +23,7 @@ IPAddress dnServer(8,8,4,4);
 IPAddress gw(192,168,1,1);
 
 
-IPAddress server (50,116,27,102);
+IPAddress server (x,x,x,x);
 unsigned int rPort = 8081;
 
 
